@@ -28,6 +28,7 @@ client.on('ready',() => {
     });
     lastSentDate = currentDate;
   }, 3600 * 1000);
+  console.log(`Get current date ${currentDate}`);
 });
 
 client.on('message', message => {
