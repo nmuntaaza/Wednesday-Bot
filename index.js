@@ -19,7 +19,6 @@ client.on('ready',() => {
           if (lastSentDate != currentDate) {
             attachment = new MessageAttachment('./itswednesdaymydudes.jpeg');
             client.channels.cache.get(channelId).send(attachment);
-            
           }
         } else {
           attachment = new MessageAttachment('./itswednesdaymydudes.jpeg');
