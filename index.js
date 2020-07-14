@@ -1,8 +1,13 @@
+require('dotenv').config();
+
 const service = require('./service');
 const { Client, MessageAttachment, Message } = require('discord.js');
-const client = new Client();
+const client = new Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION'] });
 
-const TOKEN = 'NzMxMDE0NDIxMDk0MzM0NDk3.Xwf41w.Nnvt6BaSzxsF13JZwUoMNkANQW8';
+const TOKEN = process.env.PROD_TOKEN;
+const PREFIX = process.env.PROD_PREFIX;
+const ID = process.env.PROD_ID;
+
 var AllowedChannel = [];
 var connection;
 var dispatcher;
@@ -35,13 +40,13 @@ client.on('ready',() => {
 });
 
 client.on('message', async message => {
-  const prefixMessage = message.content.slice(0, 1);
   const [command, ...subCommands] = message.content.slice(1).split(' ');
   let channelId;
-  if (prefixMessage == '!') {
+  let m;
+  if (message.content.startsWith(PREFIX)) {
     switch(command) {
       case 'ping':
-        message.reply('Pong!');
+        const msgEmbed = await message.channel.send('Pong!');
         break;
       case 'deleteAll':
         message.channel.messages.fetch().then(msgs => {
@@ -50,29 +55,29 @@ client.on('message', async message => {
         break;
       case 'allowChannel':
         channelId = message.channel.id;
-        if (AllowedChannel.findIndex(chId => chId == channelId) != -1) {
+        if (AllowedChannel.indexOf(channelId) != -1) {
           message.channel.send('This channel already allowed');
-          break;    
+          return;
         }
         AllowedChannel.push(message.channel.id);
         message.channel.send('This channel will get memes. Horray :)');
         break;
       case 'disallowChannel':
         channelId = message.channel.id;
-        const channelIndex = AllowedChannel.findIndex(chId => chId == channelId)
-        if (channelIndex == -1) {
+        if (AllowedChannel.indexOf(channelId) == -1) {
           message.channel.send('This isn\'t allowed to begin with.');
-          break;
+          return;
         }
         AllowedChannel = AllowedChannel.filter((chId, i) => i != channelIndex);
         message.channel.send('This channel now lost it\'s awesomeness. :(');
         break;
       case 'meme':
         service.getMeme(subCommands[0])
-          .then(memes => {
+          .then(async memes => {
             if (!memes.nfsw) {
               const attachment = new MessageAttachment(memes.url);
-              message.channel.send(attachment);
+              const msgEmbed = await message.channel.send(attachment);
+              msgEmbed.react("🔄");
             } else {
               console.log('Getting NFSW meme. Not handled yet');
             }
@@ -119,5 +124,57 @@ client.on('message', async message => {
     message.channel.send(attachment);
   }
 });
+
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (reaction.message.partial) await reaction.message.fetch();
+  if (reaction.partial) await reaction.fetch();
+
+  if (user.bot) return;
+  if (!reaction.message.guild) return;
+  if (reaction.message.author.id != ID) return;
+
+  if (reaction.emoji.name = '🔄') {
+    service.getMeme()
+      .then(async memes => {
+        if (!memes.nfsw) {
+          const attachment = new MessageAttachment(memes.url);
+          const msgEmbed = await reaction.message.channel.send(attachment);
+          msgEmbed.react("🔄");
+        } else {
+          console.log('Getting NFSW meme. Not handled yet');
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        message.channel.send(error.message);
+      })
+  }
+});
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  if (reaction.message.partial) await reaction.message.fetch();
+  if (reaction.partial) await reaction.fetch();
+
+  if (user.bot) return;
+  if (!reaction.message.guild) return;
+  if (reaction.message.author.id != ID) return;
+
+  if (reaction.emoji.name = '🔄') {
+    service.getMeme()
+      .then(async memes => {
+        if (!memes.nfsw) {
+          const attachment = new MessageAttachment(memes.url);
+          const msgEmbed = await reaction.message.channel.send(attachment);
+          msgEmbed.react("🔄");
+        } else {
+          console.log('Getting NFSW meme. Not handled yet');
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        message.channel.send(error.message);
+      })
+  }
+})
 
 client.login(TOKEN);
