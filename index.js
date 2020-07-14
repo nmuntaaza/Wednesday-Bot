@@ -3,7 +3,9 @@ const { Client, MessageAttachment, Message } = require('discord.js');
 const client = new Client();
 
 const TOKEN = 'NzMxMDE0NDIxMDk0MzM0NDk3.Xwf41w.Nnvt6BaSzxsF13JZwUoMNkANQW8';
-let AllowedChannel = [];
+var AllowedChannel = [];
+var connection;
+var dispatcher;
 
 client.on('ready',() => {
   console.log('Bot is up!');
@@ -32,7 +34,7 @@ client.on('ready',() => {
   }, 3600 * 1000);
 });
 
-client.on('message', message => {
+client.on('message', async message => {
   const prefixMessage = message.content.slice(0, 1);
   const [command, ...subCommands] = message.content.slice(1).split(' ');
   let channelId;
@@ -79,6 +81,37 @@ client.on('message', message => {
             console.error(error);
             message.channel.send(error.message);
           })
+        break;
+      case 'join':
+        if (!connection) {
+          let streamDestroyed = false;
+          if (!message.guild) return;
+          if (message.member.voice.channel) {
+            connection = await message.member.voice.channel.join();
+            dispatcher = connection.play('http://relay.181.fm:8018/');
+            setInterval(function () {
+              if ( connection.channel.members.size < 2 ) {
+                dispatcher.destroy();
+                streamDestroyed = true;
+              } else {
+                if (streamDestroyed) {
+                  dispatcher = connection.play('http://relay.181.fm:8018/');
+                  streamDestroyed = false;
+                }
+              }
+            }, 3 * 1000);
+          } else {
+            message.reply('You need to join a voice channel first!');
+          }
+        }
+        break;
+      case 'leave':
+        if (connection) {
+          connection.disconnect();
+        }
+        break;
+      default:
+        message.channel.send('Command not found');
         break;
     }
   } else if (message.content.toLowerCase().includes('dude')) {
