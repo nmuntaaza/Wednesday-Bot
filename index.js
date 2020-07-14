@@ -1,3 +1,4 @@
+const service = require('./service');
 const { Client, MessageAttachment, Message } = require('discord.js');
 const client = new Client();
 
@@ -33,7 +34,7 @@ client.on('ready',() => {
 
 client.on('message', message => {
   const prefixMessage = message.content.slice(0, 1);
-  const command = message.content.slice(1, message.content.length);
+  const [command, ...subCommands] = message.content.slice(1).split(' ');
   let channelId;
   if (prefixMessage == '!') {
     switch(command) {
@@ -63,6 +64,21 @@ client.on('message', message => {
         }
         AllowedChannel = AllowedChannel.filter((chId, i) => i != channelIndex);
         message.channel.send('This channel now lost it\'s awesomeness. :(');
+        break;
+      case 'meme':
+        service.getMeme(subCommands[0])
+          .then(memes => {
+            if (!memes.nfsw) {
+              const attachment = new MessageAttachment(memes.url);
+              message.channel.send(attachment);
+            } else {
+              console.log('Getting NFSW meme. Not handled yet');
+            }
+          })
+          .catch(error => {
+            console.error(error);
+            message.channel.send(error.message);
+          })
         break;
     }
   } else if (message.content.toLowerCase().includes('dude')) {
