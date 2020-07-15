@@ -34,6 +34,7 @@ var connection;
 var dispatcher;
 var streamDestroyed;
 var intervalStream;
+var lastMemeSubReddit;
 var lastPlayedRadio;
 
 client.on('ready',() => {
@@ -70,9 +71,13 @@ client.on('message', async message => {
   if (message.content.startsWith(PREFIX)) {
     switch(command) {
       case 'ping':
-        const msgEmbed = await message.channel.send('Pong!');
+        message.channel.send('Pong!');
         break;
       case 'deleteAll':
+        if (message.author.id != '525117809831837698') {
+          message.reply('Only author this bot only allowed');
+          return;
+        }
         message.channel.messages.fetch().then(msgs => {
           message.channel.bulkDelete(msgs.filter(m => m.author.username == 'itswednesdaymydudes'))
         });
@@ -84,7 +89,7 @@ client.on('message', async message => {
           return;
         }
         AllowedChannel.push(message.channel.id);
-        message.channel.send('This channel will get memes. Horray :)');
+        message.channel.send('This channel will get its_wednesday_my_dudes memes every wednesday. Horray :)');
         break;
       case 'disallow':
         channelId = message.channel.id;
@@ -98,6 +103,7 @@ client.on('message', async message => {
       case 'meme':
         service.getMeme(subCommands[0])
           .then(async memes => {
+            lastMemeSubReddit = subCommands[0];
             if (!memes.nfsw) {
               const attachment = new MessageAttachment(memes.url);
               const msgEmbed = await message.channel.send(attachment);
@@ -118,20 +124,26 @@ client.on('message', async message => {
           connection = await message.member.voice.channel.join();
           if (subCommands.length > 0) {
             let isNotIndex = Number.isNaN(Number(subCommands[0]));
+            if (isNotIndex && subCommands.length < 2) {
+              message.channel.send('Please add radio name');
+              return;
+            } 
             console.log(subCommands, isNotIndex);
             try {
               let success = false;
               if (isNotIndex) {
                 dispatcher = connection.play(subCommands[0]).on('start', () => {
+                  success = true;
+                  lastPlayedRadio = subCommands[0];
                   console.log(`Stream at ${subCommands[0]} started`);
                   message.channel.send(`Stream at ${subCommands[0]} started`);
-                  success = true;
                 });
               } else {
                 dispatcher = connection.play(radioList[+subCommands[0] - 1].url).on('start', () => {
+                  success = true;
+                  lastPlayedRadio = radioList[+subCommands[0] - 1].url;
                   console.log(`Stream at ${radioList[+subCommands[0] - 1].url} started`);
                   message.channel.send(`Stream at ${radioList[+subCommands[0] - 1].url} started`);
-                  success = true;
                 });
               }
               setTimeout(() => {
@@ -148,19 +160,21 @@ client.on('message', async message => {
                 } else {
                   console.error('Failed adding new radio URL');
                   dispatcher = connection.play(radioList[0].url).on('start', () => {
-                    console.error(`Timeout: Play Default. Stream at ${radioList[0].url} started`);
-                    message.channel.send(`Timeout: Play default. Stream at ${radioList[0].url} started`)
+                    console.error(`Timeout: Play last played. Stream at ${lastPlayedRadio || radioList[0].url} started`);
+                    message.channel.send(`Timeout: Play last played. Stream at ${lastPlayedRadio || radioList[0].url} started`);
                   });
                 }
               }, 6 * 1000);
             } catch (error) {
               console.log('Failed adding new radio URL');
               dispatcher = connection.play(radioList[0].url).on('start', () => {
-                console.error(`Failed: Play default. Stream at ${radioList[0].url} started`);
+                lastPlayedRadio = radioList[0].url;
+                console.error(`Failed: Play last played. Stream at ${radioList[0].url} started`);
               });
             }
           } else {
             dispatcher = connection.play(radioList[0].url).on('start', () => {
+              lastPlayedRadio = radioList[0].url;
               console.log(`Stream at ${radioList[0].url} started`);
               message.channel.send(`Playing default. Stream at ${radioList[0].url} started`);
             });
@@ -171,7 +185,7 @@ client.on('message', async message => {
               streamDestroyed = true;
             } else {
               if (streamDestroyed) {
-                dispatcher = connection.play('http://relay.181.fm:8018/');
+                dispatcher = connection.play(lastPlayedRadio || radioList[0].url);
                 streamDestroyed = false;
               }
             }
@@ -195,8 +209,24 @@ client.on('message', async message => {
           .setDescription(descriptionText.trim());
         message.channel.send(embedMsg);
         break;
+      case 'help':
       default:
-        message.channel.send('Command not found');
+        message.channel.send({
+          "embed": {
+            "title": "What's this bot?",
+            "description": "Wednesday My Dudes 🐸 is simple bot for reminding you when wednesday is. Sometime we forget time without enjoying it, for that reason this bot add features for you enjoy it.",
+            "color": 7506394,
+            "fields": [
+              {
+                "name": "List Command",
+                "value": "!allow [Allowing channel to get wednesday reminder]\n!open-radio [Open radio list]\n!play {radio list index} [Play radio from radio list at inputed index]\n!play {new radio url} {radio  name} [Radio name is mandatory. Play at custom url and saved to radio list for later]"
+              }
+            ],
+            "image": {
+              "url": "https://i.kym-cdn.com/photos/images/original/001/091/264/665.jpg"
+            }
+          }
+        })
         break;
     }
   } else if (message.content.toLowerCase().includes('dude')) {
@@ -214,7 +244,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
   if (reaction.message.author.id != ID) return;
 
   if (reaction.emoji.name = '🔄') {
-    service.getMeme()
+    service.getMeme(lastMemeSubReddit)
       .then(async memes => {
         if (!memes.nfsw) {
           const attachment = new MessageAttachment(memes.url);
@@ -240,7 +270,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
   if (reaction.message.author.id != ID) return;
 
   if (reaction.emoji.name = '🔄') {
-    service.getMeme()
+    service.getMeme(lastMemeSubReddit)
       .then(async memes => {
         if (!memes.nfsw) {
           const attachment = new MessageAttachment(memes.url);
