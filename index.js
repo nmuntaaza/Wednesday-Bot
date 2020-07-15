@@ -144,7 +144,7 @@ client.on('message', async message => {
                   });
                   console.log('Success adding new radio URL');
                 } else if (success && !isNotIndex) {
-                  console.log('Success playing from existing radio list')
+                  console.log('Success playing from existing radio list');
                 } else {
                   console.error('Failed adding new radio URL');
                   dispatcher = connection.play(radioList[0].url).on('start', () => {
