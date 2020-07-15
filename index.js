@@ -1,16 +1,28 @@
 require('dotenv').config();
 
 const service = require('./service');
-const { Client, MessageAttachment, Message } = require('discord.js');
+const { Client, MessageAttachment, MessageEmbed } = require('discord.js');
 const client = new Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION'] });
 
 const TOKEN = process.env.PROD_TOKEN;
 const PREFIX = process.env.PROD_PREFIX;
 const ID = process.env.PROD_ID;
 
+var radioList = [
+  {
+    'url': 'http://relay.181.fm:8018/',
+    'name': 'Highway 181',
+    'genre': 'Country',
+    'lang': 'EN'
+  }
+]
+
 var AllowedChannel = [];
 var connection;
 var dispatcher;
+var streamDestroyed;
+var intervalStream;
+var lastPlayedRadio;
 
 client.on('ready',() => {
   console.log('Bot is up!');
@@ -42,7 +54,7 @@ client.on('ready',() => {
 client.on('message', async message => {
   const [command, ...subCommands] = message.content.slice(1).split(' ');
   let channelId;
-  let m;
+  let embedMsg;
   if (message.content.startsWith(PREFIX)) {
     switch(command) {
       case 'ping':
@@ -53,7 +65,7 @@ client.on('message', async message => {
           message.channel.bulkDelete(msgs.filter(m => m.author.username == 'itswednesdaymydudes'))
         });
         break;
-      case 'allowChannel':
+      case 'allow':
         channelId = message.channel.id;
         if (AllowedChannel.indexOf(channelId) != -1) {
           message.channel.send('This channel already allowed');
@@ -62,7 +74,7 @@ client.on('message', async message => {
         AllowedChannel.push(message.channel.id);
         message.channel.send('This channel will get memes. Horray :)');
         break;
-      case 'disallowChannel':
+      case 'disallow':
         channelId = message.channel.id;
         if (AllowedChannel.indexOf(channelId) == -1) {
           message.channel.send('This isn\'t allowed to begin with.');
@@ -87,33 +99,83 @@ client.on('message', async message => {
             message.channel.send(error.message);
           })
         break;
-      case 'join':
-        if (!connection) {
-          let streamDestroyed = false;
-          if (!message.guild) return;
-          if (message.member.voice.channel) {
-            connection = await message.member.voice.channel.join();
-            dispatcher = connection.play('http://relay.181.fm:8018/');
-            setInterval(function () {
-              if ( connection.channel.members.size < 2 ) {
-                dispatcher.destroy();
-                streamDestroyed = true;
+      case 'play':
+        streamDestroyed = false;
+        if (!message.guild) return;
+        if (message.member.voice.channel) {
+          connection = await message.member.voice.channel.join();
+          if (subCommands.length > 0) {
+            let isNotIndex = Number.isNaN(Number(subCommands[0]));
+            console.log(subCommands, isNotIndex);
+            try {
+              let success = false;
+              if (isNotIndex) {
+                dispatcher = connection.play(subCommands[0]).on('start', () => {
+                  console.log(`Stream at ${subCommands[0]} started`);
+                  success = true;
+                });
               } else {
-                if (streamDestroyed) {
-                  dispatcher = connection.play('http://relay.181.fm:8018/');
-                  streamDestroyed = false;
-                }
+                dispatcher = connection.play(radioList[+subCommands[0] - 1].url).on('start', () => {
+                  console.log(`Stream at ${radioList[+subCommands[0] - 1].url} started`);
+                  success = true;
+                });
               }
-            }, 3 * 1000);
+              setTimeout(() => {
+                if (success && isNotIndex) {
+                  radioList.push({
+                    url: subCommands[0],
+                    name: subCommands[1] || '',
+                    genre: subCommands[2] || '',
+                    lang: subCommands[3] || ''
+                  });
+                  console.log('Success adding new radio URL');
+                } else {
+                  console.error('Failed adding new radio URL');
+                  dispatcher = connection.play(radioList[0].url).on('start', () => {
+                    console.error(`Stream at ${radioList[0].url} started`);
+                  });
+                }
+              }, 5 * 1000);
+            } catch (error) {
+              console.log('Failed adding new radio URL');
+              dispatcher = connection.play(radioList[0].url).on('start', () => {
+                console.error(`Stream at ${radioList[0].url} started`);
+              });
+            }
           } else {
-            message.reply('You need to join a voice channel first!');
+            dispatcher = connection.play(radioList[0].url).on('start', () => {
+              console.log(`Stream at ${radioList[0].url} started`);
+            });
           }
+          intervalStream = setInterval(function () {
+            if ( connection.channel.members.size < 2 ) {
+              dispatcher.destroy();
+              streamDestroyed = true;
+            } else {
+              if (streamDestroyed) {
+                dispatcher = connection.play('http://relay.181.fm:8018/');
+                streamDestroyed = false;
+              }
+            }
+          }, 5 * 1000);
+        } else {
+          message.reply('You need to join a voice channel first!');
         }
         break;
       case 'leave':
         if (connection) {
           connection.disconnect();
+          connection = null;
+          clearInterval(intervalStream);
         }
+        break;
+      case 'open-radio':
+        let descriptionText = radioList.reduce((acc, cur, i) => {
+          return acc + `${i + 1}) ${cur.name} | ${cur.genre} | ${cur.lang}\n`;
+        }, '');
+        embedMsg = new MessageEmbed()
+          .setDescription(descriptionText.trim());
+        message.channel.send(embedMsg);
         break;
       default:
         message.channel.send('Command not found');
