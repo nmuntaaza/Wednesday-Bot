@@ -10,11 +10,23 @@ const ID = process.env.PROD_ID;
 
 var radioList = [
   {
-    'url': 'http://relay.181.fm:8018/',
-    'name': 'Highway 181',
-    'genre': 'Country',
-    'lang': 'EN'
-  }
+    url: 'http://relay.181.fm:8018/',
+    name: 'Highway 181',
+    genre: 'Country',
+    lang: 'EN'
+  },
+  {
+    url: 'https://radio.bigrig.fm/',
+    name: 'BigRig FM',
+    genre: 'Country',
+    lang: 'EN'
+  },
+  {
+    url: 'https://19993.live.streamtheworld.com/JACK_FM.mp3',
+    name: 'Jack FM Oxford',
+    genre: 'POP',
+    lang: 'EN'
+  },
 ]
 
 var AllowedChannel = [];
