@@ -124,11 +124,13 @@ client.on('message', async message => {
               if (isNotIndex) {
                 dispatcher = connection.play(subCommands[0]).on('start', () => {
                   console.log(`Stream at ${subCommands[0]} started`);
+                  message.channel.send(`Stream at ${subCommands[0]} started`);
                   success = true;
                 });
               } else {
                 dispatcher = connection.play(radioList[+subCommands[0] - 1].url).on('start', () => {
                   console.log(`Stream at ${radioList[+subCommands[0] - 1].url} started`);
+                  message.channel.send(`Stream at ${radioList[+subCommands[0] - 1].url} started`);
                   success = true;
                 });
               }
@@ -141,22 +143,26 @@ client.on('message', async message => {
                     lang: subCommands[3] || ''
                   });
                   console.log('Success adding new radio URL');
+                } else if (success && !isNotIndex) {
+                  console.log('Success playing from existing radio list')
                 } else {
                   console.error('Failed adding new radio URL');
                   dispatcher = connection.play(radioList[0].url).on('start', () => {
-                    console.error(`Stream at ${radioList[0].url} started`);
+                    console.error(`Timeout: Play Default. Stream at ${radioList[0].url} started`);
+                    message.channel.send(`Timeout: Play default. Stream at ${radioList[0].url} started`)
                   });
                 }
-              }, 5 * 1000);
+              }, 6 * 1000);
             } catch (error) {
               console.log('Failed adding new radio URL');
               dispatcher = connection.play(radioList[0].url).on('start', () => {
-                console.error(`Stream at ${radioList[0].url} started`);
+                console.error(`Failed: Play default. Stream at ${radioList[0].url} started`);
               });
             }
           } else {
             dispatcher = connection.play(radioList[0].url).on('start', () => {
               console.log(`Stream at ${radioList[0].url} started`);
+              message.channel.send(`Playing default. Stream at ${radioList[0].url} started`);
             });
           }
           intervalStream = setInterval(function () {
