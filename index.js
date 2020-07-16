@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const fs = require('fs');
 const service = require('./service');
 const radio = require('./radioList');
 const {
@@ -94,6 +95,18 @@ client.on('message', async message => {
         }
         embedMsg = new MessageEmbed().setDescription(text.trim());
         await (await message.channel.send(embedMsg)).react('⬇️');
+        break;
+      case 'timeout':
+        if (subCommands < 1) {
+          message.reply('Set the time');
+          return;
+        }
+        if (Number.isNaN(+subCommands[0])) {
+          message.reply('Time in number');
+          return;
+        }
+        RADIO_PLAY_TIMEOUT = +subCommands[0];
+        message.reply(`Set timeout to ${subCommands[0]}`);
         break;
       case 'help':
       default:
@@ -286,7 +299,7 @@ async function playRadio(con, radio, msg, newRadio = false) {
     let broadcast = client.voice.createBroadcast();
     let dispatcher = broadcast.play(radioURL);
     
-    con.play(broadcast)
+    con.play(broadcast, { highWaterMark: 50 })
       .on('start', async () => {
         success = true;
         console.log(`Stream at ${radioURL} started`);
