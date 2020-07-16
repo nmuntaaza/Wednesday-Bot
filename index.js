@@ -120,7 +120,7 @@ client.on('message', async message => {
               "value": "**1.** Get memes from reddit.\n**2.** Listen to radio. You can add yours to!.\n**3.** Listen to podcast (i hope)."
             }, {
               "name": "List of command",
-              "value": "**!radio** [open radio list]\n**!play {index}** [play radio from radio list at inputed index]\n**!play {url} {name}** [play custom radio and saved to radio list]"
+              "value": "**!radio** [open radio list]\n**!play {index}** [play radio from radio list at inputed index]\n**!play {url} {name}** [play custom radio and saved to radio list]\n**!timeout {time}** [change radio timeout time]"
             }]
           }
         })
