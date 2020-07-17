@@ -17,9 +17,9 @@ for (let commandFile of commandFiles) {
   client.commands.set(command.name, command);
 }
 
-const TOKEN = process.env.DEV_TOKEN;
-const PREFIX = process.env.DEV_PREFIX;
-const ID = process.env.DEV_ID;
+const TOKEN = process.env.PROD_TOKEN;
+const PREFIX = process.env.PROD_PREFIX;
+const ID = process.env.PROD_ID;
 
 var RADIO_PLAY_TIMEOUT = 6;
 var intervalStream;
