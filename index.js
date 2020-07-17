@@ -17,9 +17,8 @@ for (let commandFile of commandFiles) {
   client.commands.set(command.name, command);
 }
 
-const TOKEN = process.env.PROD_TOKEN;
-const PREFIX = process.env.PROD_PREFIX;
-const ID = process.env.PROD_ID;
+const TOKEN = process.env.TOKEN;
+const PREFIX = process.env.PREFIX;
 
 var RADIO_PLAY_TIMEOUT = 6;
 var intervalStream;
@@ -35,7 +34,6 @@ client.on('ready', () => {
 
 client.on('message', async message => {
   const [command, ...subCommands] = message.content.toLowerCase().slice(1).split(' ');
-  let embedMsg;
   if (message.content.startsWith(PREFIX)) {
     switch (command) {
       case 'ping':
@@ -56,7 +54,10 @@ client.on('message', async message => {
           });
         break;
       case 'play':
-        if (!message.guild) return;
+        if (!message.guild) {
+          message.reply('In guild only');
+          return;
+        }
         if (!message.member.voice.channel) {
           message.reply('You need to join a voice channel first!');
           return;
@@ -140,6 +141,10 @@ client.on('message', async message => {
         })
         break;
       case 'radio':
+        if (!message.guild) {
+          message.reply('In guild only');
+          return;
+        }
         radioPagination = 1;
         client.commands.get('radio').execute({
           message,
@@ -150,6 +155,10 @@ client.on('message', async message => {
         });
         break;
       case 'timeout':
+        if (!message.guild) {
+          message.reply('In guild only');
+          return;
+        }
         if (subCommands.length < 1) {
           message.reply('Please set the time')
           return;
@@ -186,7 +195,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
   if (user.bot) return;
   if (!reaction.message.guild) return;
-  if (reaction.message.author.id != ID) return;
+  if (reaction.message.author.id != client.user.id) return;
 
   if (reaction.emoji.name == '🔄') {
     client.commands.get('meme')
@@ -221,7 +230,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
 
   if (user.bot) return;
   if (!reaction.message.guild) return;
-  if (reaction.message.author.id != ID) return;
+  if (reaction.message.author.id != client.user.id) return;
 
   if (reaction.emoji.name == '🔄') {
     client.commands.get('meme')
