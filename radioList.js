@@ -180,4 +180,4 @@ let radioList = [{
     "lang": "EN"
 }]
 
-exports.radioList = radioList;
+module.exports.radioList = radioList;

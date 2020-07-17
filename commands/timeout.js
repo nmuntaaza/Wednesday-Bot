@@ -2,6 +2,8 @@ module.exports = {
   name: 'timeout',
   description: 'Set radio connection timeout',
   execute: async function ({
+    client,
+    connection,
     message,
     args
   }) {

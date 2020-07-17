@@ -7,6 +7,7 @@ module.exports = {
   name: 'meme',
   description: 'Get memes from subreddit',
   execute: async function ({
+    client,
     connection,
     message,
     args
