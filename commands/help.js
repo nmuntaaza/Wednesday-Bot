@@ -2,6 +2,8 @@ module.exports = {
   name: 'help',
   description: 'Show help attachment',
   execute: async function ({
+    client,
+    connection,
     message,
     args
   }) {

@@ -1,12 +1,9 @@
 require('dotenv').config();
 
 const fs = require('fs');
-const service = require('./services/meme');
-const radio = require('./radioList');
+const radioList = require('./radioList').radioList;
 const {
   Client,
-  MessageAttachment,
-  MessageEmbed,
   Collection
 } = require('discord.js');
 
@@ -25,7 +22,6 @@ const PREFIX = process.env.DEV_PREFIX;
 const ID = process.env.DEV_ID;
 
 var RADIO_PLAY_TIMEOUT = 6;
-var radioList = radio.radioList;
 var intervalStream;
 var lastMemeSubReddit;
 var maxPageList = 10;
@@ -75,7 +71,7 @@ client.on('message', async message => {
                 return;
               }
               if (!isNotIndex) {
-                client.commands.get('play')
+                await client.commands.get('play')
                   .execute({
                     client,
                     connection: con,
@@ -93,7 +89,7 @@ client.on('message', async message => {
                     console.log(error);
                   });
               } else {
-                client.commands.get('play')
+                await client.commands.get('play')
                   .execute({
                     client,
                     connection: con,
@@ -113,7 +109,7 @@ client.on('message', async message => {
                   });
               }
             } else {
-              client.commands.get('play')
+              await client.commands.get('play')
                 .execute({
                   client,
                   connection: con,
@@ -145,13 +141,13 @@ client.on('message', async message => {
         break;
       case 'radio':
         radioPagination = 1;
-        let text = '';
-        for (let i = (radioPagination - 1) * maxPageList; i < (radioPagination) * maxPageList; i++) {
-          if (i >= radioList.length) break;
-          text += `${i + 1}) ${radioList[i].name} ${radioList[i].genre ? '| ' + radioList[i].genre : ''}\n`;
-        }
-        embedMsg = new MessageEmbed().setDescription(text.trim());
-        await (await message.channel.send(embedMsg)).react('⬇️');
+        client.commands.get('radio').execute({
+          message,
+          args: {
+            maxPageList,
+            radioPagination
+          }
+        });
         break;
       case 'timeout':
         if (subCommands.length < 1) {
@@ -205,66 +201,17 @@ client.on('messageReactionAdd', async (reaction, user) => {
       });
   }
 
-  if (reaction.emoji.name == '⬇️') {
-    radioPagination = radioPagination == Math.ceil(radioList.length / maxPageList) ? radioPagination : radioPagination + 1;
-    let text = '';
-    for (let i = (radioPagination - 1) * maxPageList; i < (radioPagination) * maxPageList; i++) {
-      if (i >= radioList.length) break;
-      text += `${i + 1}) ${radioList[i].name} ${radioList[i].genre ? '| ' + radioList[i].genre : ''}\n`;
-    }
-    const embedMsg = new MessageEmbed().setDescription(text.trim());
-    const msgEmbed = await reaction.message.edit(embedMsg);
-    if (radioPagination != 1) {
-      await msgEmbed.react('⬆️');
-    } else {
-      reaction.message.reactions.cache
-        .get('⬆️')
-        .remove()
-        .catch(error => {
-          console.error(error);
-        });
-    }
-    if (radioPagination != Math.ceil(radioList.length / maxPageList)) {
-      await msgEmbed.react('⬇️');
-    } else {
-      reaction.message.reactions.cache
-        .get('⬇️')
-        .remove()
-        .catch(error => {
-          console.error(error);
-        });
-    }
-  }
-
-  if (reaction.emoji.name == '⬆️') {
-    radioPagination = radioPagination == 1 ? radioPagination : radioPagination - 1;
-    let text = '';
-    for (let i = (radioPagination - 1) * maxPageList; i < (radioPagination) * maxPageList; i++) {
-      if (i >= radioList.length) break;
-      text += `${i + 1}) ${radioList[i].name} ${radioList[i].genre ? '| ' + radioList[i].genre : ''}\n`;
-    }
-    const embedMsg = new MessageEmbed().setDescription(text.trim());
-    const msgEmbed = await reaction.message.edit(embedMsg);
-    if (radioPagination != 1) {
-      await msgEmbed.react('⬆️');
-    } else {
-      reaction.message.reactions.cache
-        .get('⬆️')
-        .remove()
-        .catch(error => {
-          console.error(error);
-        });
-    }
-    if (radioPagination != Math.ceil(radioList.length / maxPageList)) {
-      await msgEmbed.react('⬇️');
-    } else {
-      reaction.message.reactions.cache
-        .get('⬇️')
-        .remove()
-        .catch(error => {
-          console.error(error);
-        });
-    }
+  if (reaction.emoji.name == '⬇️' || reaction.emoji.name == '⬆️') {
+    radioPagination = reaction.emoji.name == '⬇️' 
+      ? radioPagination == Math.ceil(radioList.length / maxPageList) ? radioPagination : radioPagination + 1
+      : radioPagination == 1 ? radioPagination : radioPagination - 1;
+    client.commands.get('radio').execute({
+      reaction,
+      args: {
+        maxPageList,
+        radioPagination
+      }
+    });
   }
 });
 
@@ -289,95 +236,16 @@ client.on('messageReactionRemove', async (reaction, user) => {
       });
   }
 
-  if (reaction.emoji.name == '⬇️') {
-    radioPagination++;
-    let text = '';
-    for (let i = (radioPagination - 1) * maxPageList; i < (radioPagination) * maxPageList; i++) {
-      if (i >= radioList.length) break;
-      text += `${i + 1}) ${radioList[i].name} ${radioList[i].genre ? '| ' + radioList[i].genre : ''}\n`;
-    }
-    const embedMsg = new MessageEmbed().setDescription(text.trim());
-    const msgEmbed = await reaction.message.edit(embedMsg);
-    if (radioPagination != 1) {
-      await msgEmbed.react('⬆️');
-    } else {
-      reaction.message.reactions.cache.get('⬆️').remove().catch(error => {
-        console.error(error);
-      });
-    }
-    if (radioPagination != Math.ceil(radioList.length / maxPageList)) {
-      await msgEmbed.react('⬇️');
-    } else {
-      reaction.message.reactions.cache.get('⬇️').remove().catch(error => {
-        console.error(error);
-      });
-    }
-  }
-
-  if (reaction.emoji.name == '⬆️') {
-    radioPagination--;
-    let text = '';
-    for (let i = (radioPagination - 1) * maxPageList; i < (radioPagination) * maxPageList; i++) {
-      if (i >= radioList.length) break;
-      text += `${i + 1}) ${radioList[i].name} ${radioList[i].genre ? '| ' + radioList[i].genre : ''}\n`;
-    }
-    const embedMsg = new MessageEmbed().setDescription(text.trim());
-    const msgEmbed = await reaction.message.edit(embedMsg);
-    if (radioPagination != 1) {
-      await msgEmbed.react('⬆️');
-    } else {
-      reaction.message.reactions.cache.get('⬆️').remove().catch(error => {
-        console.error(error);
-      });
-    }
-    if (radioPagination != Math.ceil(radioList.length / maxPageList)) {
-      await msgEmbed.react('⬇️');
-    } else {
-      reaction.message.reactions.cache.get('⬇️').remove().catch(error => {
-        console.error(error);
-      });
-    }
+  if (reaction.emoji.name == '⬇️' || reaction.emoji.name == '⬆️') {
+    radioPagination = reaction.emoji.name == '⬇️' 
+      ? radioPagination == Math.ceil(radioList.length / maxPageList) ? radioPagination : radioPagination + 1
+      : radioPagination == 1 ? radioPagination : radioPagination - 1;
+    client.commands.get('radio').execute({
+      reaction,
+      args: {
+        maxPageList,
+        radioPagination
+      }
+    });
   }
 });
-
-async function playRadio(con, radio, msg, newRadio = false) {
-  return new Promise(async (resolve, reject) => {
-    let success = false;
-    let radioURL = newRadio ? radio[0] : radio.url;
-    let radioName = newRadio ? radio[1] : radio.name;
-    let broadcast = client.voice.createBroadcast();
-    let dispatcher = broadcast.play(radioURL);
-
-    con.play(broadcast, {
-        highWaterMark: 50
-      })
-      .on('start', async () => {
-        success = true;
-        console.log(`Stream at ${radioURL} started`);
-        msg.channel.send(`Stream at ${radioName} started`);
-      })
-      .on('error', async error => {
-        msg.channel.send('Failed. Play other');
-        reject(error);
-      })
-
-    setTimeout(async () => {
-      if (success && newRadio) {
-        let r = {
-          url: radio[0] || '',
-          name: radio[1] || '',
-          genre: radio[2] || '',
-          lang: radio[3] || '',
-        }
-        radioList.push(r);
-        console.log('Success adding new radio', r);
-      } else if (success) {
-        console.log('Success playing from existing radio list');
-      } else {
-        msg.channel.send('TImeout. Play other or try again');
-        reject('Timeout. Play other or try again');
-      }
-      resolve(dispatcher);
-    }, RADIO_PLAY_TIMEOUT * 1000);
-  });
-}
