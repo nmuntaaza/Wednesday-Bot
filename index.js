@@ -1,23 +1,30 @@
 require('dotenv').config();
 
 const fs = require('fs');
-const service = require('./service');
+const service = require('./services/meme');
 const radio = require('./radioList');
 const {
   Client,
   MessageAttachment,
-  MessageEmbed
+  MessageEmbed,
+  Collection
 } = require('discord.js');
+
 const client = new Client({
   partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
+client.commands = new Collection();
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+for (let commandFile of commandFiles) {
+  const command = require(`./commands/${commandFile}`);
+  client.commands.set(command.name, command);
+}
 
-const TOKEN = process.env.PROD_TOKEN;
-const PREFIX = process.env.PROD_PREFIX;
-const ID = process.env.PROD_ID;
+const TOKEN = process.env.DEV_TOKEN;
+const PREFIX = process.env.DEV_PREFIX;
+const ID = process.env.DEV_ID;
 
 var RADIO_PLAY_TIMEOUT = 6;
-
 var radioList = radio.radioList;
 var intervalStream;
 var lastMemeSubReddit;
@@ -33,27 +40,24 @@ client.on('ready', () => {
 client.on('message', async message => {
   const [command, ...subCommands] = message.content.toLowerCase().slice(1).split(' ');
   let embedMsg;
-  let msgEmbed;
   if (message.content.startsWith(PREFIX)) {
     switch (command) {
       case 'ping':
-        message.channel.send('Pong!');
+        client.commands.get('ping').execute({
+          message
+        });
         break;
       case 'meme':
-        service.getMeme(subCommands[0])
-          .then(async memes => {
-            lastMemeSubReddit = subCommands[0];
-            if (!memes.nfsw) {
-              const attachment = new MessageAttachment(memes.url);
-              await (await message.channel.send(attachment)).react('🔄');
-            } else {
-              console.log('Getting NFSW meme. Not handled yet');
+        client.commands.get('meme')
+          .execute({
+            message,
+            args: {
+              subReddit: subCommands[0]
             }
           })
-          .catch(error => {
-            console.error(error);
-            message.channel.send(error.message);
-          })
+          .then(result => {
+            lastMemeSubReddit = result.subReddit;
+          });
         break;
       case 'play':
         if (!message.guild) return;
@@ -70,9 +74,62 @@ client.on('message', async message => {
                 message.channel.send('Please add radio name');
                 return;
               }
-              dispatcher = isNotIndex ? await playRadio(con, subCommands, message, true) : await playRadio(con, radioList[+subCommands[0] - 1], message);
+              if (!isNotIndex) {
+                client.commands.get('play')
+                  .execute({
+                    client,
+                    connection: con,
+                    message,
+                    args: {
+                      radio: radioList[Number(subCommands[0]) - 1],
+                      newRadio: false,
+                      timeout: RADIO_PLAY_TIMEOUT
+                    }
+                  })
+                  .then(result => {
+                    dispatcher = result.dispatcher;
+                  })
+                  .catch(error => {
+                    console.log(error);
+                  });
+              } else {
+                client.commands.get('play')
+                  .execute({
+                    client,
+                    connection: con,
+                    message,
+                    args: {
+                      radio: subCommands,
+                      newRadio: true,
+                      timeout: RADIO_PLAY_TIMEOUT
+                    }
+                  })
+                  .then(result => {
+                    dispatcher = result.dispatcher;
+                    radioList.push(result.radio);
+                  })
+                  .catch(error => {
+                    console.log(error);
+                  });
+              }
             } else {
-              dispatcher = await playRadio(con, radioList[12], message);
+              client.commands.get('play')
+                .execute({
+                  client,
+                  connection: con,
+                  message,
+                  args: {
+                    radio: radioList[12], // Default radio
+                    newRadio: false,
+                    timeout: RADIO_PLAY_TIMEOUT
+                  }
+                })
+                .then(result => {
+                  dispatcher = result.dispatcher;
+                })
+                .catch(error => {
+                  console.log(error);
+                });
             }
             intervalStream = setInterval(async () => {
               if (con.channel.members.size < 2) {
@@ -97,33 +154,31 @@ client.on('message', async message => {
         await (await message.channel.send(embedMsg)).react('⬇️');
         break;
       case 'timeout':
-        if (subCommands < 1) {
-          message.reply('Set the time');
+        if (subCommands.length < 1) {
+          message.reply('Please set the time')
           return;
         }
-        if (Number.isNaN(+subCommands[0])) {
-          message.reply('Time in number');
-          return;
-        }
-        RADIO_PLAY_TIMEOUT = +subCommands[0];
-        message.reply(`Set timeout to ${subCommands[0]}`);
+        client.commands.get('timeout')
+          .execute({
+            message,
+            args: {
+              timeout: subCommands[0]
+            }
+          })
+          .then(result => {
+            RADIO_PLAY_TIMEOUT = result.timeout;
+            message.reply(`Radio connetion timeout set to ${RADIO_PLAY_TIMEOUT} second`);
+          })
+          .catch(error => {
+            console.error(error);
+            message.reply(`Error: ${error.message}`);
+          });
         break;
       case 'help':
       default:
-        message.channel.send({
-          "embed": {
-            "title": "Wednesday",
-            "description": "Is simple bot for you enjoy.",
-            "color": 7506394,
-            "fields": [{
-              "name": "Features",
-              "value": "**1.** Get memes from reddit.\n**2.** Listen to radio. You can add yours to!.\n**3.** Listen to podcast (i hope)."
-            }, {
-              "name": "List of command",
-              "value": "**!radio** [open radio list]\n**!play {index}** [play radio from radio list at inputed index]\n**!play {url} {name}** [play custom radio and saved to radio list]\n**!timeout {time}** [change radio timeout time]"
-            }]
-          }
-        })
+        client.commands.get('help').execute({
+          message
+        });
         break;
     }
   }
@@ -138,19 +193,16 @@ client.on('messageReactionAdd', async (reaction, user) => {
   if (reaction.message.author.id != ID) return;
 
   if (reaction.emoji.name == '🔄') {
-    service.getMeme(lastMemeSubReddit)
-      .then(async memes => {
-        if (!memes.nfsw) {
-          const attachment = new MessageAttachment(memes.url);
-          await (await reaction.message.channel.send(attachment)).react('⬇️');
-        } else {
-          console.log('Getting NFSW meme. Not handled yet');
+    client.commands.get('meme')
+      .execute({
+        message: reaction.message,
+        args: {
+          subReddit: lastMemeSubReddit
         }
       })
-      .catch(error => {
-        console.error(error);
-        message.channel.send(error.message);
-      })
+      .then(result => {
+        lastMemeSubReddit = result.subReddit;
+      });
   }
 
   if (reaction.emoji.name == '⬇️') {
@@ -225,19 +277,16 @@ client.on('messageReactionRemove', async (reaction, user) => {
   if (reaction.message.author.id != ID) return;
 
   if (reaction.emoji.name == '🔄') {
-    service.getMeme(lastMemeSubReddit)
-      .then(async memes => {
-        if (!memes.nfsw) {
-          const attachment = new MessageAttachment(memes.url);
-          await (await reaction.message.channel.send(attachment)).react('🔄');
-        } else {
-          console.log('Getting NFSW meme. Not handled yet');
+    client.commands.get('meme')
+      .execute({
+        message: reaction.message,
+        args: {
+          subReddit: lastMemeSubReddit
         }
       })
-      .catch(error => {
-        console.error(error);
-        message.channel.send(error.message);
-      })
+      .then(result => {
+        lastMemeSubReddit = result.subReddit;
+      });
   }
 
   if (reaction.emoji.name == '⬇️') {
@@ -298,8 +347,10 @@ async function playRadio(con, radio, msg, newRadio = false) {
     let radioName = newRadio ? radio[1] : radio.name;
     let broadcast = client.voice.createBroadcast();
     let dispatcher = broadcast.play(radioURL);
-    
-    con.play(broadcast, { highWaterMark: 50 })
+
+    con.play(broadcast, {
+        highWaterMark: 50
+      })
       .on('start', async () => {
         success = true;
         console.log(`Stream at ${radioURL} started`);
@@ -313,10 +364,10 @@ async function playRadio(con, radio, msg, newRadio = false) {
     setTimeout(async () => {
       if (success && newRadio) {
         let r = {
-          url   : radio[0] || '',
-          name  : radio[1] || '',
-          genre : radio[2] || '',
-          lang  : radio[3] || '',
+          url: radio[0] || '',
+          name: radio[1] || '',
+          genre: radio[2] || '',
+          lang: radio[3] || '',
         }
         radioList.push(r);
         console.log('Success adding new radio', r);
@@ -328,5 +379,5 @@ async function playRadio(con, radio, msg, newRadio = false) {
       }
       resolve(dispatcher);
     }, RADIO_PLAY_TIMEOUT * 1000);
-  })
+  });
 }
