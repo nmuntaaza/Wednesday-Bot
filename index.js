@@ -20,11 +20,7 @@ for (let commandFile of commandFiles) {
 const TOKEN = process.env.TOKEN;
 const PREFIX = process.env.PREFIX;
 
-var RADIO_PLAY_TIMEOUT = 6;
-var intervalStream;
-var lastMemeSubReddit;
-var maxPageList = 10;
-var radioPagination;
+var states = new Map();
 
 client.login(TOKEN);
 
@@ -34,7 +30,16 @@ client.on('ready', () => {
 
 client.on('message', async message => {
   const [command, ...subCommands] = message.content.toLowerCase().slice(1).split(' ');
+  let intervalStream;
   if (message.content.startsWith(PREFIX)) {
+    const sourceId = message.guild ? message.guild.id : message.author.id;
+    const newstates = {
+      lastMemeSubReddit: '',
+      maxPageList: 10,
+      radioPlayTimeout: 6,
+      radioPagination: 0
+    }
+    if (!states.has(sourceId)) states.set(sourceId, newstates);
     switch (command) {
       case 'ping':
         client.commands.get('ping').execute({
@@ -50,7 +55,7 @@ client.on('message', async message => {
             }
           })
           .then(result => {
-            lastMemeSubReddit = result.subReddit;
+            states.get(sourceId).lastMemeSubReddit = result.subReddit;
           });
         break;
       case 'play':
@@ -80,7 +85,7 @@ client.on('message', async message => {
                     args: {
                       radio: radioList[Number(subCommands[0]) - 1],
                       newRadio: false,
-                      timeout: RADIO_PLAY_TIMEOUT
+                      timeout: states.get(sourceId).radioPlayTimeout
                     }
                   })
                   .then(result => {
@@ -98,7 +103,7 @@ client.on('message', async message => {
                     args: {
                       radio: subCommands,
                       newRadio: true,
-                      timeout: RADIO_PLAY_TIMEOUT
+                      timeout: states.get(sourceId).radioPlayTimeout
                     }
                   })
                   .then(result => {
@@ -118,7 +123,7 @@ client.on('message', async message => {
                   args: {
                     radio: radioList[12], // Default radio
                     newRadio: false,
-                    timeout: RADIO_PLAY_TIMEOUT
+                    timeout: states.get(sourceId).radioPlayTimeout
                   }
                 })
                 .then(result => {
@@ -145,12 +150,12 @@ client.on('message', async message => {
           message.reply('In guild only');
           return;
         }
-        radioPagination = 1;
+        states.get(sourceId).radioPagination = 1;
         client.commands.get('radio').execute({
           message,
           args: {
-            maxPageList,
-            radioPagination
+            maxPageList: states.get(sourceId).maxPageList,
+            radioPagination: states.get(sourceId).radioPagination
           }
         });
         break;
@@ -171,8 +176,8 @@ client.on('message', async message => {
             }
           })
           .then(result => {
-            RADIO_PLAY_TIMEOUT = result.timeout;
-            message.reply(`Radio connetion timeout set to ${RADIO_PLAY_TIMEOUT} second`);
+            states.get(sourceId).radioPlayTimeout = result.timeout;
+            message.reply(`Radio connetion timeout set to ${states.get(sourceId).radioPlayTimeout} second`);
           })
           .catch(error => {
             console.error(error);
@@ -190,6 +195,7 @@ client.on('message', async message => {
 });
 
 client.on('messageReactionAdd', async (reaction, user) => {
+  const sourceId = reaction.message.guild ? reaction.message.guild.id : reaction.message.author.id;
   if (reaction.message.partial) await reaction.message.fetch();
   if (reaction.partial) await reaction.fetch();
 
@@ -202,29 +208,30 @@ client.on('messageReactionAdd', async (reaction, user) => {
       .execute({
         message: reaction.message,
         args: {
-          subReddit: lastMemeSubReddit
+          subReddit: states.get(sourceId).lastMemeSubReddit
         }
       })
       .then(result => {
-        lastMemeSubReddit = result.subReddit;
+        states.get(sourceId).lastMemeSubReddit = result.subReddit;
       });
   }
 
   if (reaction.emoji.name == '⬇️' || reaction.emoji.name == '⬆️') {
-    radioPagination = reaction.emoji.name == '⬇️' 
-      ? radioPagination == Math.ceil(radioList.length / maxPageList) ? radioPagination : radioPagination + 1
-      : radioPagination == 1 ? radioPagination : radioPagination - 1;
+    states.get(sourceId).radioPagination = reaction.emoji.name == '⬇️' ?
+      states.get(sourceId).radioPagination == Math.ceil(radioList.length / states.get(sourceId).maxPageList) ? states.get(sourceId).radioPagination : states.get(sourceId).radioPagination + 1 :
+      states.get(sourceId).radioPagination == 1 ? states.get(sourceId).radioPagination : states.get(sourceId).radioPagination - 1;
     client.commands.get('radio').execute({
       reaction,
       args: {
-        maxPageList,
-        radioPagination
+        maxPageList: states.get(sourceId).maxPageList,
+        radioPagination: states.get(sourceId).radioPagination
       }
     });
   }
 });
 
 client.on('messageReactionRemove', async (reaction, user) => {
+  const sourceId = reaction.message.guild ? reaction.message.guild.id : reaction.message.author.id;
   if (reaction.message.partial) await reaction.message.fetch();
   if (reaction.partial) await reaction.fetch();
 
@@ -237,23 +244,23 @@ client.on('messageReactionRemove', async (reaction, user) => {
       .execute({
         message: reaction.message,
         args: {
-          subReddit: lastMemeSubReddit
+          subReddit: states.get(sourceId).lastMemeSubReddit
         }
       })
       .then(result => {
-        lastMemeSubReddit = result.subReddit;
+        states.get(sourceId).lastMemeSubReddit = result.subReddit;
       });
   }
 
   if (reaction.emoji.name == '⬇️' || reaction.emoji.name == '⬆️') {
-    radioPagination = reaction.emoji.name == '⬇️' 
-      ? radioPagination == Math.ceil(radioList.length / maxPageList) ? radioPagination : radioPagination + 1
-      : radioPagination == 1 ? radioPagination : radioPagination - 1;
+    states.get(sourceId).radioPagination = reaction.emoji.name == '⬇️' ?
+      states.get(sourceId).radioPagination == Math.ceil(radioList.length / states.get(sourceId).maxPageList) ? states.get(sourceId).radioPagination : states.get(sourceId).radioPagination + 1 :
+      states.get(sourceId).radioPagination == 1 ? states.get(sourceId).radioPagination : states.get(sourceId).radioPagination - 1;
     client.commands.get('radio').execute({
       reaction,
       args: {
-        maxPageList,
-        radioPagination
+        maxPageList: states.get(sourceId).maxPageList,
+        radioPagination: states.get(sourceId).radioPagination
       }
     });
   }
