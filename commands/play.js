@@ -26,15 +26,18 @@ module.exports = {
           console.log('Success adding new radio', radio);
           resolve({
             radio,
-            dispatcher
+            dispatcher,
+            currentPlayed: radioName
           });
         } else if (success) {
           console.log('Success playing from existing radio list');
           resolve({
-            dispatcher
+            dispatcher,
+            currentPlayed: radioName
           })
         } else {
-          message.channel.send('TImeout. Play other or try again');
+          message.edit('Timeout. Extend the timeout or try again');
+          // message.channel.send('TImeout. Play other or try again');
           reject('Timeout. Play other or try again');
         }
       }
@@ -47,10 +50,12 @@ module.exports = {
           clearTimeout(handlerTimeout);
           connectionHandler();
           console.log(`Stream at ${radioURL} started`);
-          message.channel.send(`Stream at ${radioName} started`);
+          message.edit(`Connected. Stream at ${radioName} started`);
+          // message.channel.send(`Stream at ${radioName} started`);
         })
         .on('error', error => {
-          message.channel.send('Failed. Play other');
+          message.edit('Failed. Play other');
+          // message.channel.send('Failed. Play other');
           reject(error);
         })
 
