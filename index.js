@@ -26,20 +26,23 @@ client.login(TOKEN);
 
 client.on('ready', () => {
   console.log('Bot is up!');
+  client.user.setActivity('Listening to !help');
 });
 
 client.on('message', async message => {
   const [command, ...subCommands] = message.content.toLowerCase().slice(1).split(' ');
   let intervalStream;
+  const newstates = {
+    lastMemeSubReddit: '',
+    maxPageList: 10,
+    radioPlayTimeout: 6,
+    radioPagination: 0,
+    prefix: '!',
+    currentPlayed: ''
+  }
+  const sourceId = message.guild ? message.guild.id : message.author.id;
+  if (!states.has(sourceId)) states.set(sourceId, newstates);
   if (message.content.startsWith(PREFIX)) {
-    const sourceId = message.guild ? message.guild.id : message.author.id;
-    const newstates = {
-      lastMemeSubReddit: '',
-      maxPageList: 10,
-      radioPlayTimeout: 6,
-      radioPagination: 0
-    }
-    if (!states.has(sourceId)) states.set(sourceId, newstates);
     switch (command) {
       case 'ping':
         client.commands.get('ping').execute({
@@ -58,7 +61,25 @@ client.on('message', async message => {
             states.get(sourceId).lastMemeSubReddit = result.subReddit;
           });
         break;
+      case 'prefix':
+        break; // Not yet added to new feature
+        if (subCommands.length < 1) {
+          message.channel.send('Please specify the prefix');
+          return;
+        }
+        client.commands.get('prefix')
+          .execute({
+            args: {
+              currentState: states.get(sourceId),
+              newPrefix: subCommands[0]
+            }
+          })
+          .then(result => {
+            states.set(sourceId, result.newState);
+            message.channel.send(`Prefix has changed to ${result.newState.prefix}`);
+          })
       case 'play':
+        let m;
         if (!message.guild) {
           message.reply('In guild only');
           return;
@@ -76,12 +97,13 @@ client.on('message', async message => {
                 message.channel.send('Please add radio name');
                 return;
               }
+              m = await message.channel.send('Connecting. Please wait...');
               if (!isNotIndex) {
                 await client.commands.get('play')
                   .execute({
                     client,
                     connection: con,
-                    message,
+                    message: m,
                     args: {
                       radio: radioList[Number(subCommands[0]) - 1],
                       newRadio: false,
@@ -90,6 +112,7 @@ client.on('message', async message => {
                   })
                   .then(result => {
                     dispatcher = result.dispatcher;
+                    states.get(sourceId).currentPlayed = result.currentPlayed;
                   })
                   .catch(error => {
                     console.log(error);
@@ -99,7 +122,7 @@ client.on('message', async message => {
                   .execute({
                     client,
                     connection: con,
-                    message,
+                    message: m,
                     args: {
                       radio: subCommands,
                       newRadio: true,
@@ -109,17 +132,19 @@ client.on('message', async message => {
                   .then(result => {
                     dispatcher = result.dispatcher;
                     radioList.push(result.radio);
+                    states.get(sourceId).currentPlayed = result.currentPlayed;
                   })
                   .catch(error => {
                     console.log(error);
                   });
               }
             } else {
+              m = await message.channel.send('Connecting. Please wait...');
               await client.commands.get('play')
                 .execute({
                   client,
                   connection: con,
-                  message,
+                  message: m,
                   args: {
                     radio: radioList[12], // Default radio
                     newRadio: false,
@@ -128,6 +153,7 @@ client.on('message', async message => {
                 })
                 .then(result => {
                   dispatcher = result.dispatcher;
+                  states.get(sourceId).currentPlayed = result.currentPlayed;
                 })
                 .catch(error => {
                   console.log(error);
@@ -155,7 +181,8 @@ client.on('message', async message => {
           message,
           args: {
             maxPageList: states.get(sourceId).maxPageList,
-            radioPagination: states.get(sourceId).radioPagination
+            radioPagination: states.get(sourceId).radioPagination,
+            currentPlayed: states.get(sourceId).currentPlayed
           }
         });
         break;
@@ -185,7 +212,6 @@ client.on('message', async message => {
           });
         break;
       case 'help':
-      default:
         client.commands.get('help').execute({
           message
         });
@@ -224,7 +250,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
       reaction,
       args: {
         maxPageList: states.get(sourceId).maxPageList,
-        radioPagination: states.get(sourceId).radioPagination
+        radioPagination: states.get(sourceId).radioPagination,
+        currentPlayed: states.get(sourceId).currentPlayed
       }
     });
   }
@@ -260,7 +287,8 @@ client.on('messageReactionRemove', async (reaction, user) => {
       reaction,
       args: {
         maxPageList: states.get(sourceId).maxPageList,
-        radioPagination: states.get(sourceId).radioPagination
+        radioPagination: states.get(sourceId).radioPagination,
+        currentPlayed: states.get(sourceId).currentPlayed
       }
     });
   }
