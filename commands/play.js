@@ -1,3 +1,7 @@
+function titleCase (str) {
+  return str.split(' ').map(s => s[0].toUpperCase() + s.slice(1));
+}
+
 module.exports = {
   name: 'play',
   description: 'Playing radio',
@@ -19,7 +23,7 @@ module.exports = {
         if (success && args.newRadio) {
           const radio = {
             url: args.radio[0] || '',
-            name: args.radio[1] || '',
+            name: args.radio[1] ? titleCase(args.radio[1]) : '',
             genre: args.radio[2] || '',
             lang: args.radio[3] || '',
           }
@@ -37,7 +41,6 @@ module.exports = {
           })
         } else {
           message.edit('Timeout. Extend the timeout or try again');
-          // message.channel.send('TImeout. Play other or try again');
           reject('Timeout. Play other or try again');
         }
       }
@@ -51,11 +54,9 @@ module.exports = {
           connectionHandler();
           console.log(`Stream at ${radioURL} started`);
           message.edit(`Connected. Stream at ${radioName} started`);
-          // message.channel.send(`Stream at ${radioName} started`);
         })
         .on('error', error => {
           message.edit('Failed. Play other');
-          // message.channel.send('Failed. Play other');
           reject(error);
         })
 

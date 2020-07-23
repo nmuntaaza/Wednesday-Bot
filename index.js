@@ -26,7 +26,7 @@ client.login(TOKEN);
 
 client.on('ready', () => {
   console.log('Bot is up!');
-  client.user.setActivity('Listening to !help');
+  client.user.setActivity('!help');
 });
 
 client.on('message', async message => {
