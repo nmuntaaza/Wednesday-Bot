@@ -20,6 +20,7 @@ const radioService = require('./services/radio');
 
 const TOKEN = process.env.TOKEN;
 const PREFIX = process.env.PREFIX;
+const MONGODB_CONNECT_STRING = process.env.MONGODB_CONNECT_STRING;
 
 var mongoClient;
 var states = new Map();
@@ -314,7 +315,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
 });
 
 async function run() {
-  mongodb.connect()
+  mongodb.connect(MONGODB_CONNECT_STRING)
     .then(async mongoC => {
       console.log('Connected to DB');
       mongoClient = mongoC;

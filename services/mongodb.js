@@ -1,10 +1,9 @@
 const MongoClient = require('mongodb').MongoClient;
-const uri = "mongodb+srv://wednesday-bot:pass@cluster0-abi6u.gcp.mongodb.net/wednesday?retryWrites=true&w=majority";
 
 module.exports = {
-  connect: async function () {
+  connect: async function (connectionString) {
     return new Promise(async (resolve, reject) => {
-      new MongoClient.connect(uri, { useUnifiedTopology: true })
+      new MongoClient.connect(connectionString, { useUnifiedTopology: true })
         .then(client => {
           resolve(client);
         })
