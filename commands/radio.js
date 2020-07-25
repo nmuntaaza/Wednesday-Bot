@@ -1,7 +1,7 @@
 const {
   MessageEmbed
 } = require('discord.js');
-const radioList = require('../radioList').radioList;
+const radioService = require('../services/radio');
 
 module.exports = {
   name: 'radio',
@@ -15,9 +15,18 @@ module.exports = {
   }) {
     return new Promise(async (resolve, reject) => {
       try {
-        let text = args.currentPlayed ? `🎵 **Playing ${args.currentPlayed} Now** 🎵\n\n` : '';
-        for (let i = (args.radioPagination - 1) * args.maxPageList; i < (args.radioPagination) * args.maxPageList; i++) {
-          if (i >= radioList.length) break;
+        const {
+          currentPlayed,
+          radioPagination,
+          maxPageList,
+          mongoClient
+        } = args;
+        const radioList = await radioService.find(mongoClient);
+        const radioListLength = radioList.length;
+
+        let text = currentPlayed ? `🎵 **Playing ${currentPlayed} Now** 🎵\n\n` : '';
+        for (let i = (radioPagination - 1) * maxPageList; i < (radioPagination) * maxPageList; i++) {
+          if (i >= radioListLength) break;
           text += `**[${i + 1}]** ${radioList[i].name} ${radioList[i].genre ? '| ' + radioList[i].genre : ''}\n`;
         }
         const embedMsg = new MessageEmbed().setDescription(text.trim());
@@ -26,7 +35,7 @@ module.exports = {
           resolve();
         } else {
           const msgEmbed = await reaction.message.edit(embedMsg);
-          if (args.radioPagination != 1) {
+          if (radioPagination != 1) {
             await msgEmbed.react('⬆️');
           } else {
             reaction.message.reactions.cache
@@ -39,7 +48,7 @@ module.exports = {
                 reject(error);
               });
           }
-          if (args.radioPagination != Math.ceil(radioList.length / args.maxPageList)) {
+          if (radioPagination != Math.ceil(radioListLength / maxPageList)) {
             await msgEmbed.react('⬇️');
           } else {
             reaction.message.reactions.cache

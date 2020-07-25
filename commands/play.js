@@ -1,5 +1,7 @@
-function titleCase (str) {
-  return str.split(' ').map(s => s[0].toUpperCase() + s.slice(1));
+const radioService = require('../services/radio');
+
+function titleCase(str) {
+  return str.split(' ').map(s => s[0].toUpperCase() + s.slice(1))[0];
 }
 
 module.exports = {
@@ -27,7 +29,6 @@ module.exports = {
             genre: args.radio[2] || '',
             lang: args.radio[3] || '',
           }
-          console.log('Success adding new radio', radio);
           resolve({
             radio,
             dispatcher,
