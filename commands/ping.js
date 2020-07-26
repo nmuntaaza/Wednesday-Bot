@@ -8,7 +8,16 @@ module.exports = {
     args
   }) {
     return new Promise((resolve, reject) => {
-      message.channel.send('Pong!');
+      message.channel
+        .send('Pong!')
+        .then(m => {
+          resolve({
+            message: 'Sent ping'
+          });
+        })
+        .catch(error => {
+          console.error('Error @Commands.Ping.Execute():', error);
+        })
     })
   }
 }

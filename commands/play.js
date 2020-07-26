@@ -1,3 +1,10 @@
+const EventEmitter = require('events');
+const radioService = require('../services/radio');
+
+function titleCase(str) {
+  return str.split(' ').map(s => s[0].toUpperCase() + s.slice(1))[0];
+}
+
 module.exports = {
   name: 'play',
   description: 'Playing radio',
@@ -8,6 +15,45 @@ module.exports = {
     args
   }) {
     return new Promise((resolve, reject) => {
+      const connectionEventEmitter = new EventEmitter();
+
+      const successHandler = () => {
+        connectionEventEmitter.removeListener('success', successHandler);
+        connectionEventEmitter.removeListener('timeout', timeoutHandler);
+        if (args.newRadio) {
+          const radio = {
+            guildId: message.guild.id,
+            url: args.radio[0] || '',
+            name: args.radio[1] ? titleCase(args.radio[1]) : '',
+            genre: args.radio[2] || '',
+            lang: args.radio[3] || '',
+          }
+          resolve({
+            radio,
+            dispatcher,
+            currentPlayed: radioName,
+            message: `Success playing ${radioName}-${radioURL} @${message.guild.name}-${message.guild.id}`
+          });
+        } else {
+          resolve({
+            dispatcher,
+            currentPlayed: radioName,
+            message: `Success playing ${radioName} from existing radio list`
+          })
+        }
+      }
+
+      const timeoutHandler = () => {
+        connectionEventEmitter.removeListener('success', successHandler);
+        connectionEventEmitter.removeListener('timeout', timeoutHandler);
+        console.error('Error @Commands.Play.Execute():', `Timeout when trying to connect to ${radioName}-${radioURL}`);
+        console.error('Args:', args);
+        message.edit('Timeout. Extend the timeout or try again');
+      }
+
+      connectionEventEmitter.on('success', successHandler);
+      connectionEventEmitter.on('timeout', timeoutHandler)
+
       let handlerTimeout;
       let success = false;
       const radioURL = args.newRadio ? args.radio[0] : args.radio.url;
@@ -15,51 +61,22 @@ module.exports = {
       const broadcast = client.voice.createBroadcast();
       const dispatcher = broadcast.play(radioURL);
 
-      const connectionHandler = () => {
-        if (success && args.newRadio) {
-          const radio = {
-            url: args.radio[0] || '',
-            name: args.radio[1] || '',
-            genre: args.radio[2] || '',
-            lang: args.radio[3] || '',
-          }
-          console.log('Success adding new radio', radio);
-          resolve({
-            radio,
-            dispatcher,
-            currentPlayed: radioName
-          });
-        } else if (success) {
-          console.log('Success playing from existing radio list');
-          resolve({
-            dispatcher,
-            currentPlayed: radioName
-          })
-        } else {
-          message.edit('Timeout. Extend the timeout or try again');
-          // message.channel.send('TImeout. Play other or try again');
-          reject('Timeout. Play other or try again');
-        }
-      }
-
       connection.play(broadcast, {
           highWaterMark: 50
         })
         .on('start', () => {
-          success = true;
           clearTimeout(handlerTimeout);
-          connectionHandler();
+          connectionEventEmitter.emit('success');
           console.log(`Stream at ${radioURL} started`);
           message.edit(`Connected. Stream at ${radioName} started`);
-          // message.channel.send(`Stream at ${radioName} started`);
         })
         .on('error', error => {
+          console.error('Error @Commands.Play.Execute().Play():', error);
+          console.error('Args:', args);
           message.edit('Failed. Play other');
-          // message.channel.send('Failed. Play other');
-          reject(error);
         })
 
-      handlerTimeout = setTimeout(connectionHandler, args.timeout * 1000);
+      handlerTimeout = setTimeout(() => { connectionEventEmitter.emit('timeout'); }, args.timeout * 1000);
     });
   }
 }
