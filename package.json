@@ -10,14 +10,12 @@
     "axios": "^0.19.2",
     "discord.js": "^12.2.0",
     "dotenv": "^8.2.0",
-    "ffmpeg-static": "^4.2.5"
+    "ffmpeg-static": "^4.2.5",
+    "mongodb": "^3.5.9"
   },
   "scripts": {
     "start": "node .",
     "dev": "node -r dotenv/config index.js dotenv_config_path=./dev.env",
     "prod": "node -r dotenv/config index.js dotenv_config_path=./prod.env"
-  },
-  "devDependencies": {
-    "mongodb": "^3.5.9"
   }
 }
