@@ -8,15 +8,12 @@ module.exports = {
     args
   }) {
     return new Promise((resolve, reject) => {
-      try {
-        let newState = args.currentState;
-        newState.prefix = args.newPrefix;
-        resolve({
-          newState
-        });
-      } catch (error) {
-        reject(error);
-      }
+      let newState = args.currentState;
+      newState.prefix = args.newPrefix;
+      resolve({
+        newState,
+        message: `Success changing prefix`
+      });
     });
   }
 }

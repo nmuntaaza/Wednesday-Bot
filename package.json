@@ -16,5 +16,8 @@
     "start": "node .",
     "dev": "node -r dotenv/config index.js dotenv_config_path=./dev.env",
     "prod": "node -r dotenv/config index.js dotenv_config_path=./prod.env"
+  },
+  "devDependencies": {
+    "mongodb": "^3.5.9"
   }
 }
