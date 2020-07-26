@@ -17,7 +17,9 @@ module.exports = {
     return new Promise((resolve, reject) => {
       const connectionEventEmitter = new EventEmitter();
 
-      connectionEventEmitter.on('success', () => {
+      const successHandler = () => {
+        connectionEventEmitter.removeListener('success', successHandler);
+        connectionEventEmitter.removeListener('timeout', timeoutHandler);
         if (args.newRadio) {
           const radio = {
             guildId: message.guild.id,
@@ -39,13 +41,18 @@ module.exports = {
             message: `Success playing ${radioName} from existing radio list`
           })
         }
-      });
+      }
 
-      connectionEventEmitter.on('timeout', () => {
+      const timeoutHandler = () => {
+        connectionEventEmitter.removeListener('success', successHandler);
+        connectionEventEmitter.removeListener('timeout', timeoutHandler);
         console.error('Error @Commands.Play.Execute():', `Timeout when trying to connect to ${radioName}-${radioURL}`);
         console.error('Args:', args);
         message.edit('Timeout. Extend the timeout or try again');
-      })
+      }
+
+      connectionEventEmitter.on('success', successHandler);
+      connectionEventEmitter.on('timeout', timeoutHandler)
 
       let handlerTimeout;
       let success = false;
