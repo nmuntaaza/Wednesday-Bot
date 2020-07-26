@@ -17,6 +17,7 @@ for (let commandFile of commandFiles) {
 }
 const mongodb = require('./services/mongodb');
 const radioService = require('./services/radio');
+const userRadioService = require('./services/user-radio');
 
 const TOKEN = process.env.TOKEN;
 const PREFIX = process.env.PREFIX;
@@ -52,9 +53,14 @@ client.on('message', async message => {
   if (message.content.startsWith(PREFIX)) {
     switch (command) {
       case 'ping':
-        client.commands.get('ping').execute({
-          message
-        });
+        client.commands
+          .get('ping')
+          .execute({
+            message
+          })
+          .then(result => {
+            console.log(result.message);
+          })
         break;
       case 'meme':
         client.commands.get('meme')
@@ -65,6 +71,7 @@ client.on('message', async message => {
             }
           })
           .then(result => {
+            console.log(result.message);
             state.lastMemeSubReddit = result.subReddit;
           });
         break;
@@ -82,9 +89,10 @@ client.on('message', async message => {
             }
           })
           .then(result => {
+            console.log(result.message);
             states.set(sourceId, result.newState);
             message.channel.send(`Prefix has changed to ${result.newState.prefix}`);
-          })
+          });
       case 'play':
         let m;
         if (!message.guild) {
@@ -97,7 +105,7 @@ client.on('message', async message => {
         }
         message.member.voice.channel.join().then(async (con) => {
           let dispatcher;
-          let radioList = await radioService.find(mongoClient);
+          let radioList = [...await radioService.find(mongoClient), ...await userRadioService.find(mongoClient, { guildId: message.guild.id })];
           try {
             if (subCommands.length > 0) {
               let isNotIndex = Number.isNaN(Number(subCommands[0]));
@@ -107,7 +115,7 @@ client.on('message', async message => {
               }
               m = await message.channel.send('Connecting. Please wait...');
               if (!isNotIndex) {
-                await client.commands.get('play')
+                client.commands.get('play')
                   .execute({
                     client,
                     connection: con,
@@ -119,14 +127,12 @@ client.on('message', async message => {
                     }
                   })
                   .then(result => {
+                    console.log(result.message);
                     dispatcher = result.dispatcher;
                     state.currentPlayed = result.currentPlayed;
                   })
-                  .catch(error => {
-                    console.log(error);
-                  });
               } else {
-                await client.commands.get('play')
+                client.commands.get('play')
                   .execute({
                     client,
                     connection: con,
@@ -139,17 +145,20 @@ client.on('message', async message => {
                     }
                   })
                   .then(result => {
+                    console.log(result.message);
                     dispatcher = result.dispatcher;
                     state.currentPlayed = result.currentPlayed;
-                    radioService.insert(mongoClient, {
+                    radioService
+                      .insert(mongoClient, {
                         radio: result.radio
                       })
-                      .then(result => { console.log('Success insert new radio', result.radio); })
-                      .catch(error => { console.error('Error @Index.radioService.insert()', error); })
+                      .then(r => {
+                        console.log('Success insert new radio', result.radio);
+                      })
+                      .catch(error => {
+                        console.error('Error @Index.radioService.insert()', error);
+                      })
                   })
-                  .catch(error => {
-                    console.log(error);
-                  });
               }
             } else {
               m = await message.channel.send('Connecting. Please wait...');
@@ -165,12 +174,10 @@ client.on('message', async message => {
                   }
                 })
                 .then(result => {
+                  console.log(result.message);
                   dispatcher = result.dispatcher;
                   state.currentPlayed = result.currentPlayed;
                 })
-                .catch(error => {
-                  console.log(error);
-                });
             }
             intervalStream = setInterval(async () => {
               if (con.channel.members.size < 2) {
@@ -190,15 +197,20 @@ client.on('message', async message => {
           return;
         }
         state.radioPagination = 1;
-        client.commands.get('radio').execute({
-          message,
-          args: {
-            maxPageList: state.maxPageList,
-            radioPagination: state.radioPagination,
-            currentPlayed: state.currentPlayed,
-            mongoClient
-          }
-        });
+        client.commands
+          .get('radio')
+          .execute({
+            message,
+            args: {
+              maxPageList: state.maxPageList,
+              radioPagination: state.radioPagination,
+              currentPlayed: state.currentPlayed,
+              mongoClient
+            }
+          })
+          .then(result => {
+            console.log(result.message);
+          })
         break;
       case 'timeout':
         if (!message.guild) {
@@ -226,9 +238,14 @@ client.on('message', async message => {
           });
         break;
       case 'help':
-        client.commands.get('help').execute({
-          message
-        });
+        client.commands
+          .get('help')
+          .execute({
+            message
+          })
+          .then(result => {
+            console.log(result.message);
+          })
         break;
     }
   }
@@ -262,15 +279,20 @@ client.on('messageReactionAdd', async (reaction, user) => {
     state.radioPagination = reaction.emoji.name == '⬇️' ?
       state.radioPagination == Math.ceil(radioListLength / state.maxPageList) ? state.radioPagination : state.radioPagination + 1 :
       state.radioPagination == 1 ? state.radioPagination : state.radioPagination - 1;
-    client.commands.get('radio').execute({
-      reaction,
-      args: {
-        maxPageList: state.maxPageList,
-        radioPagination: state.radioPagination,
-        currentPlayed: state.currentPlayed,
-        mongoClient
-      }
-    });
+    client.commands
+      .get('radio')
+      .execute({
+        reaction,
+        args: {
+          maxPageList: state.maxPageList,
+          radioPagination: state.radioPagination,
+          currentPlayed: state.currentPlayed,
+          mongoClient
+        }
+      })
+      .then(result => {
+        console.log(result.message);
+      });
   }
 });
 
@@ -302,15 +324,20 @@ client.on('messageReactionRemove', async (reaction, user) => {
     state.radioPagination = reaction.emoji.name == '⬇️' ?
       state.radioPagination == Math.ceil(radioListLength / state.maxPageList) ? state.radioPagination : state.radioPagination + 1 :
       state.radioPagination == 1 ? state.radioPagination : state.radioPagination - 1;
-    client.commands.get('radio').execute({
-      reaction,
-      args: {
-        maxPageList: state.maxPageList,
-        radioPagination: state.radioPagination,
-        currentPlayed: state.currentPlayed,
-        mongoClient
-      }
-    });
+    client.commands
+      .get('radio')
+      .execute({
+        reaction,
+        args: {
+          maxPageList: state.maxPageList,
+          radioPagination: state.radioPagination,
+          currentPlayed: state.currentPlayed,
+          mongoClient
+        }
+      })
+      .then(result => {
+        console.log(result.message);
+      })
   }
 });
 

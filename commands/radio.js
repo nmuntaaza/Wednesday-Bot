@@ -2,6 +2,7 @@ const {
   MessageEmbed
 } = require('discord.js');
 const radioService = require('../services/radio');
+const userRadioService = require('../services/user-radio');
 
 module.exports = {
   name: 'radio',
@@ -21,7 +22,7 @@ module.exports = {
           maxPageList,
           mongoClient
         } = args;
-        const radioList = await radioService.find(mongoClient);
+        const radioList = [...await radioService.find(mongoClient), ...await userRadioService.find(mongoClient, { guildId: reaction ? reaction.message.guild.id : message.guild.id })];
         const radioListLength = radioList.length;
 
         let text = currentPlayed ? `🎵 **Playing ${currentPlayed} Now** 🎵\n\n` : '';
@@ -32,38 +33,27 @@ module.exports = {
         const embedMsg = new MessageEmbed().setDescription(text.trim());
         if (!reaction) {
           await (await message.channel.send(embedMsg)).react('⬇️');
-          resolve();
+          resolve({
+            message: `Sent radio list page ${radioPagination} @${message.guild.name}-${message.guild.id}`
+          })
         } else {
-          const msgEmbed = await reaction.message.edit(embedMsg);
-          if (radioPagination != 1) {
-            await msgEmbed.react('⬆️');
+          const maxPagination = Math.ceil(radioListLength / maxPageList);
+          if (radioPagination == 1) {
+            await (await reaction.message.reactions.removeAll()).react('⬇️');
+          } else if (radioPagination > 1 && radioPagination < maxPagination) {
+            const m = await (await reaction.message.reactions.removeAll()).edit(embedMsg);
+            await m.react('⬇️');
+            await m.react('⬆️');
           } else {
-            reaction.message.reactions.cache
-              .get('⬆️')
-              .remove()
-              .then(() => {
-                resolve();
-              })
-              .catch(error => {
-                reject(error);
-              });
+            await (await (await reaction.message.reactions.removeAll()).edit(embedMsg)).react('⬆️');
           }
-          if (radioPagination != Math.ceil(radioListLength / maxPageList)) {
-            await msgEmbed.react('⬇️');
-          } else {
-            reaction.message.reactions.cache
-              .get('⬇️')
-              .remove()
-              .then(() => {
-                resolve();
-              })
-              .catch(error => {
-                reject(error);
-              });
-          }
+          resolve({
+            message: `Sent radio list page ${radioPagination} @${reaction.message.guild.name}-${reaction.message.guild.id}`
+          })
         }
       } catch (error) {
-        console.error(error);
+        console.error('Error @Commands.Radio.Execute():', error);
+        console.error('Args:', args);
       }
     });
   }
