@@ -28,13 +28,14 @@ To run this bot locally:
    * When done use should be in your application information, open Bot sidebar.
    * Click add bot and click yes.
    * Click copy to copy your token.
-1. Paste your token on field TOKEN on .env file
-1. Fill other field
+1. Paste your token on field TOKEN on .env file.
+1. Fill other field.
 1. Run your bot:
 
    ```bash
    $ npm run start
    ```
+1. Get your bot client id from your application in [Discord Developer](https://discord.com/developers/applications).
 1. Invite your bot with:
 
    ```
