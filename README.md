@@ -41,3 +41,46 @@ To run this bot locally:
    ```
    https://discord.com/api/oauth2/authorize?client_id=<your_bot_client_id>&permissions=3668032&scope=bot
    ```
+
+## Database
+
+I use mongodb atlas to store my radio, to set up your database you can read tutorial to [setup a free cluster](https://docs.atlas.mongodb.com/getting-started/) in mongodb atlas.
+
+Database Name: wednesday
+Collection `radio` JSON structure:
+```json
+{
+   "_id": {
+      "$oid": "5f1c373291b9e39487b68055"
+   },
+   "url": "http://ice-the.musicradio.com:80/LBC973MP3Low",
+   "name": "LBC",
+   "genre": "",
+   "lang": "EN"
+}
+```
+Collection `radio` JSON structure:
+_id is guild id
+```json
+{
+   "_id": "5251183704214077xx",
+   "lastMemeSubReddit": "",
+   "maxPageList": 10,
+   "radioPlayTimeout": 6,
+   "radioPagination": 0,
+   "prefix": "!",
+   "currentPlayed": ""
+}
+```
+Collection `radio` JSON structure:
+```json
+{
+   "_id": {
+      "$oid": "5f1cd9651020bf1af7e80e20"
+   },
+   "url": "http://listento.ardanradio.com:1059/stream/1/",
+   "name": "Ardan",
+   "genre": "",
+   "lang": ""
+}
+```
