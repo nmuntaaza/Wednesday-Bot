@@ -59,7 +59,7 @@ Collection `radio` JSON structure:
    "lang": "EN"
 }
 ```
-Collection `radio` JSON structure:
+Collection `states` JSON structure:
 ```json
 {
    "_id": "5251183704214077xx", // Guild ID
@@ -71,7 +71,7 @@ Collection `radio` JSON structure:
    "currentPlayed": ""
 }
 ```
-Collection `radio` JSON structure:
+Collection `user_radio` JSON structure:
 ```json
 {
    "_id": {
