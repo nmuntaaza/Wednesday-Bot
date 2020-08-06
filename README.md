@@ -60,10 +60,9 @@ Collection `radio` JSON structure:
 }
 ```
 Collection `radio` JSON structure:
-_id is guild id
 ```json
 {
-   "_id": "5251183704214077xx",
+   "_id": "5251183704214077xx", // Guild ID
    "lastMemeSubReddit": "",
    "maxPageList": 10,
    "radioPlayTimeout": 6,
